@@ -16,9 +16,26 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final List<Transaction> _userTransactions = [];
   bool _showChart = false;
+
+  @override
+  void initState() {
+    WidgetsBinding.instance.addObserver(this);
+    super.initState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint('$state');
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   List<Transaction> get _recentTransactions {
     return _userTransactions.where((trnx) {
@@ -59,109 +76,138 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  List<Widget> _buildLandscape(MediaQueryData mediaQuery,
+      PreferredSizeWidget appBar, Widget txListWidget) {
+    return [
+      // SWITCH FOR CHART
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Show Chart",
+            style: Theme.of(context).textTheme.headline6,
+          ),
+          Switch.adaptive(
+            activeColor: Theme.of(context).accentColor,
+            value: _showChart,
+            onChanged: (value) {
+              setState(() {
+                _showChart = value;
+              });
+            },
+          ),
+        ],
+      ),
+      _showChart
+          // CHART TO SHOW DAILY EXPENSE GRAPHICALLY
+          ? SizedBox(
+              height: (mediaQuery.size.height -
+                      appBar.preferredSize.height -
+                      mediaQuery.padding.top) *
+                  0.7,
+              child: Chart(_recentTransactions),
+            )
+
+          // USER TRANSACTION LIST
+          : txListWidget,
+    ];
+  }
+
+  List<Widget> _buildPortrait(MediaQueryData mediaQuery,
+      PreferredSizeWidget appBar, Widget txListWidget) {
+    return [
+      // CHART TO SHOW DAILY EXPENSE GRAPHICALLY
+      SizedBox(
+        height: (mediaQuery.size.height -
+                appBar.preferredSize.height -
+                mediaQuery.padding.top) *
+            0.25,
+        child: Chart(_recentTransactions),
+      ),
+
+      // USER TRANSACTION LIST
+      txListWidget,
+    ];
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return Platform.isIOS
+        ? CupertinoNavigationBar(
+            middle: const Text(
+              "Expense Tracker",
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () => _startAddNewTransaction(context),
+                  child: const Icon(CupertinoIcons.add),
+                ),
+              ],
+            ),
+          )
+        : AppBar(
+            title: const Text(
+              "Expense Tracker",
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () => _startAddNewTransaction(context),
+              ),
+            ],
+          ) as PreferredSizeWidget;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final isLandScape = mediaQuery.orientation == Orientation.landscape;
 
-    // ANDROID APPBAR
-    final appBar = AppBar(
-      title: const Text(
-        "Expense Tracker",
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.add),
-          onPressed: () => _startAddNewTransaction(context),
-        ),
-      ],
-    );
-
-    // IOS APPBAR
-    final iosAppBar = CupertinoNavigationBar(
-      middle: const Text(
-        "Expense Tracker",
-      ),
-      trailing: Row(
-        children: [
-          GestureDetector(
-            onTap: () => _startAddNewTransaction(context),
-            child: const Icon(CupertinoIcons.add),
-          ),
-        ],
-      ),
-    );
+    // AppBar for IOS or Android
+    final appBar = _buildAppBar();
 
     // TRANSACTION LIST.DART
     final txListWidget = SizedBox(
       height: (mediaQuery.size.height -
               appBar.preferredSize.height -
               mediaQuery.padding.top) *
-          0.75,
+          0.65,
       child: TransactionList(_userTransactions, _deleteTransaction),
     );
 
     // HOMEPAGE BODY
-    final pageBody = SingleChildScrollView(
-      child: Column(
-        // mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          // SWITCH FOR CHART
-          if (isLandScape)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text("Show Chart"),
-                Switch.adaptive(
-                  activeColor: Theme.of(context).accentColor,
-                  value: _showChart,
-                  onChanged: (value) {
-                    setState(() {
-                      _showChart = value;
-                    });
-                  },
-                ),
-              ],
-            ),
+    final pageBody = SafeArea(
+      child: SingleChildScrollView(
+        child: Column(
+          // mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            // PORTRAIT MODE {
+            if (!isLandScape)
+              ..._buildPortrait(
+                mediaQuery,
+                appBar,
+                txListWidget,
+              ),
+            // } PORTRAIT MODE ENDS
 
-          // PORTRAIT MODE {
-          // CHART TO SHOW DAILY EXPENSE GRAPHICALLY
-          if (!isLandScape)
-            SizedBox(
-              height: (mediaQuery.size.height -
-                      appBar.preferredSize.height -
-                      mediaQuery.padding.top) *
-                  0.25,
-              child: Chart(_recentTransactions),
-            ),
-
-          // USER TRANSACTION LIST
-          if (!isLandScape) txListWidget,
-          // } PORTRAIT MODE ENDS
-
-          // LANDSCAPE MODE {
-          if (isLandScape)
-            _showChart
-                // CHART TO SHOW DAILY EXPENSE GRAPHICALLY
-                ? SizedBox(
-                    height: (mediaQuery.size.height -
-                            appBar.preferredSize.height -
-                            mediaQuery.padding.top) *
-                        0.7,
-                    child: Chart(_recentTransactions),
-                  )
-
-                // USER TRANSACTION LIST
-                : txListWidget,
-          // } LANDSCAPE MODE ENDS
-        ],
+            // LANDSCAPE MODE {
+            if (isLandScape)
+              ..._buildLandscape(
+                mediaQuery,
+                appBar,
+                txListWidget,
+              ),
+            // } LANDSCAPE MODE ENDS
+          ],
+        ),
       ),
     );
 
     return Platform.isIOS
         ? CupertinoPageScaffold(
             child: pageBody,
-            navigationBar: iosAppBar,
+            navigationBar: appBar as ObstructingPreferredSizeWidget,
           )
         : Scaffold(
             appBar: appBar,

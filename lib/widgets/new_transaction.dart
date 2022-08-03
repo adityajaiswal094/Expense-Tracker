@@ -1,7 +1,8 @@
 // ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+import '../widgets/adaptive_flatbutton.dart';
 
 class NewTransaction extends StatefulWidget {
   final Function addTrnx;
@@ -16,6 +17,21 @@ class _NewTransactionState extends State<NewTransaction> {
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
   DateTime _selectedDate = DateTime(1800);
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didUpdateWidget(covariant NewTransaction oldWidget) {
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
 
   void _submitData() {
     if (_amountController.text.isEmpty) {
@@ -99,19 +115,18 @@ class _NewTransactionState extends State<NewTransaction> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Date field
                     Text(
                       _selectedDate == DateTime(1800)
                           ? 'No Date Chosen!'
                           : "Picked Date: ${DateFormat('dd/MM/yyyy').format(_selectedDate)}",
                       style: Theme.of(context).textTheme.headline1,
                     ),
-                    FlatButton(
-                      textColor: Theme.of(context).primaryColor,
-                      onPressed: _presentDatePicker,
-                      child: Text(
-                        'Choose Date',
-                        style: Theme.of(context).textTheme.headline2,
-                      ),
+
+                    // DATE PICKER
+                    AdaptiveFlatButton(
+                      'Choose Date',
+                      _presentDatePicker,
                     ),
                   ],
                 ),
